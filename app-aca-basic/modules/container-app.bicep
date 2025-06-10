@@ -10,6 +10,9 @@ param location string = resourceGroup().location
 @description('The container registry login server')
 param containerRegistryLoginServer string
 
+@description('The resource group name where the container registry is located')
+param containerRegistryResourceGroupName string = resourceGroup().name
+
 @description('The container image name and tag')
 param containerImage string
 
@@ -18,6 +21,22 @@ param targetPort int = 80
 
 @description('The Log Analytics Workspace ID')
 param logAnalyticsWorkspaceId string
+
+// Extract registry name from login server (remove .azurecr.io suffix)
+var registryName = split(containerRegistryLoginServer, '.')[0]
+
+// --- Correction Starts Here ---
+// Reference the existing container registry
+resource existingContainerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: registryName
+  scope: resourceGroup(containerRegistryResourceGroupName)
+}
+
+// It's a best practice to fetch the credentials once into variables
+var registryCredentials = existingContainerRegistry.listCredentials()
+var registryUsername = registryCredentials.username
+var registryPassword = registryCredentials.passwords[0].value
+// --- Correction Ends Here ---
 
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
   name: environmentName
@@ -46,7 +65,14 @@ resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
       registries: [
         {
           server: containerRegistryLoginServer
-          identity: 'system'
+          username: registryUsername // Use the variable
+          passwordSecretRef: 'registry-password'
+        }
+      ]
+      secrets: [
+        {
+          name: 'registry-password'
+          value: registryPassword // Use the variable
         }
       ]
     }
@@ -67,6 +93,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
       }
     }
   }
+  // Add an explicit dependency to ensure the registry is looked up before the app is configured
+  dependsOn: [
+    existingContainerRegistry
+  ]
 }
 
-output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output containerAppUrl string = 'https://://${containerApp.properties.configuration.ingress.fqdn}'

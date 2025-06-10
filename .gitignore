@@ -404,3 +404,5 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+app-aca-basic/deployment-demo-local.ipynb
+app-aca-basic/parameters/local.bicepparam
