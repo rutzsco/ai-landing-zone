@@ -19,8 +19,11 @@ param containerImage string
 @description('The target port for the container')
 param targetPort int = 80
 
+@description('Timestamp for unique deployment names')
+param deploymentTimestamp string = utcNow()
+
 module logAnalytics './modules/log-analytics.bicep' = {
-  name: 'logAnalyticsDeployment'
+  name: 'logAnalyticsDeployment-${deploymentTimestamp}'
   params: {
     workspaceName: '${environmentName}-workspace'
     location: location
@@ -28,7 +31,7 @@ module logAnalytics './modules/log-analytics.bicep' = {
 }
 
 module containerApp './modules/container-app.bicep' = {
-  name: 'containerAppDeployment'
+  name: 'containerAppDeployment-${deploymentTimestamp}'
   params: {
     environmentName: environmentName
     containerAppName: containerAppName
