@@ -19,6 +19,9 @@ param containerImage string
 @description('The target port for the container')
 param targetPort int = 80
 
+@description('The name of the Cosmos DB account')
+param cosmosDbAccountName string = '${environmentName}-cosmos'
+
 @description('Timestamp for unique deployment names')
 param deploymentTimestamp string = utcNow()
 
@@ -26,6 +29,14 @@ module logAnalytics './modules/log-analytics.bicep' = {
   name: 'logAnalyticsDeployment-${deploymentTimestamp}'
   params: {
     workspaceName: '${environmentName}-workspace'
+    location: location
+  }
+}
+
+module cosmosDb './modules/cosmos-db.bicep' = {
+  name: 'cosmosDbDeployment-${deploymentTimestamp}'
+  params: {
+    cosmosDbAccountName: cosmosDbAccountName
     location: location
   }
 }
@@ -41,5 +52,15 @@ module containerApp './modules/container-app.bicep' = {
     containerImage: containerImage
     targetPort: targetPort
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+    cosmosDbEndpoint: cosmosDb.outputs.endpoint
+    cosmosDbAccountName: cosmosDb.outputs.accountName
+    cosmosDbDatabaseName: cosmosDb.outputs.databaseName
+    cosmosDbCollectionName: cosmosDb.outputs.collectionName
   }
 }
+
+output containerAppUrl string = containerApp.outputs.containerAppUrl
+output cosmosDbEndpoint string = cosmosDb.outputs.endpoint
+output cosmosDbAccountName string = cosmosDb.outputs.accountName
+output cosmosDbDatabaseName string = cosmosDb.outputs.databaseName
+output cosmosDbCollectionName string = cosmosDb.outputs.collectionName

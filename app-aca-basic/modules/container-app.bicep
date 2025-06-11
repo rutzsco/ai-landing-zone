@@ -22,21 +22,37 @@ param targetPort int = 80
 @description('The Log Analytics Workspace ID')
 param logAnalyticsWorkspaceId string
 
+@description('The Cosmos DB endpoint')
+param cosmosDbEndpoint string = ''
+
+@description('The Cosmos DB account name')
+param cosmosDbAccountName string = ''
+
+@description('The Cosmos DB database name')
+param cosmosDbDatabaseName string = ''
+
+@description('The Cosmos DB collection name')
+param cosmosDbCollectionName string = ''
+
 // Extract registry name from login server (remove .azurecr.io suffix)
 var registryName = split(containerRegistryLoginServer, '.')[0]
 
-// --- Correction Starts Here ---
 // Reference the existing container registry
 resource existingContainerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: registryName
   scope: resourceGroup(containerRegistryResourceGroupName)
 }
 
+// Reference the existing Cosmos DB account if provided
+resource existingCosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = if (cosmosDbAccountName != '') {
+  name: cosmosDbAccountName
+}
+
 // It's a best practice to fetch the credentials once into variables
 var registryCredentials = existingContainerRegistry.listCredentials()
 var registryUsername = registryCredentials.username
 var registryPassword = registryCredentials.passwords[0].value
-// --- Correction Ends Here ---
+var cosmosConnectionString = cosmosDbAccountName != '' ? existingCosmosDb.listConnectionStrings().connectionStrings[0].connectionString : ''
 
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
   name: environmentName
@@ -74,6 +90,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
           name: 'registry-password'
           value: registryPassword // Use the variable
         }
+        {
+          name: 'cosmos-connection-string'
+          value: cosmosConnectionString
+        }
       ]
     }
     template: {
@@ -85,6 +105,24 @@ resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
+          env: [
+            {
+              name: 'COSMOS_DB_ENDPOINT'
+              value: cosmosDbEndpoint
+            }
+            {
+              name: 'COSMOS_DB_DATABASE_NAME'
+              value: cosmosDbDatabaseName
+            }
+            {
+              name: 'COSMOS_DB_COLLECTION_NAME'
+              value: cosmosDbCollectionName
+            }
+            {
+              name: 'COSMOS_DB_CONNECTION_STRING'
+              secretRef: 'cosmos-connection-string'
+            }
+          ]
         }
       ]
       scale: {
@@ -96,7 +134,8 @@ resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
   // Add an explicit dependency to ensure the registry is looked up before the app is configured
   dependsOn: [
     existingContainerRegistry
+    existingCosmosDb
   ]
 }
 
-output containerAppUrl string = 'https://://${containerApp.properties.configuration.ingress.fqdn}'
+output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
