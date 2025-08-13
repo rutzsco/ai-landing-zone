@@ -22,6 +22,9 @@ param targetPort int = 80
 @description('The name of the Cosmos DB account')
 param cosmosDbAccountName string = '${environmentName}-cosmos'
 
+@description('The name of the Storage Account')
+param storageAccountName string = 'st${take(replace(replace(environmentName, '-', ''), 'containerapp', 'ca'), 10)}${take(uniqueString(resourceGroup().id), 6)}'
+
 @description('Timestamp for unique deployment names')
 param deploymentTimestamp string = utcNow()
 
@@ -37,6 +40,14 @@ module cosmosDb './modules/cosmos-db.bicep' = {
   name: 'cosmosDbDeployment-${deploymentTimestamp}'
   params: {
     cosmosDbAccountName: cosmosDbAccountName
+    location: location
+  }
+}
+
+module storageAccount './modules/storage-account.bicep' = {
+  name: 'storageAccountDeployment-${deploymentTimestamp}'
+  params: {
+    storageAccountName: storageAccountName
     location: location
   }
 }
@@ -64,3 +75,5 @@ output cosmosDbEndpoint string = cosmosDb.outputs.endpoint
 output cosmosDbAccountName string = cosmosDb.outputs.accountName
 output cosmosDbDatabaseName string = cosmosDb.outputs.databaseName
 output cosmosDbCollectionName string = cosmosDb.outputs.collectionName
+output storageAccountName string = storageAccount.outputs.storageAccountName
+output storageAccountPrimaryEndpoint string = storageAccount.outputs.primaryEndpoint

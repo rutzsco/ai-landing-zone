@@ -43,8 +43,8 @@ resource existingContainerRegistry 'Microsoft.ContainerRegistry/registries@2023-
   scope: resourceGroup(containerRegistryResourceGroupName)
 }
 
-// Reference the existing Cosmos DB account if provided
-resource existingCosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = if (cosmosDbAccountName != '') {
+// Reference the existing Cosmos DB account
+resource existingCosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: cosmosDbAccountName
 }
 
@@ -52,7 +52,6 @@ resource existingCosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' exi
 var registryCredentials = existingContainerRegistry.listCredentials()
 var registryUsername = registryCredentials.username
 var registryPassword = registryCredentials.passwords[0].value
-var cosmosConnectionString = cosmosDbAccountName != '' ? existingCosmosDb.listConnectionStrings().connectionStrings[0].connectionString : ''
 
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
   name: environmentName
@@ -92,7 +91,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
         }
         {
           name: 'cosmos-connection-string'
-          value: cosmosConnectionString
+          value: existingCosmosDb.listConnectionStrings().connectionStrings[0].connectionString
         }
       ]
     }
