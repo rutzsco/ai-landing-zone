@@ -1,0 +1,21 @@
+using '../main.bicep'
+
+// Production parameters for Azure API Management v2 deployment
+param apiManagementName = 'apim-ai-gateway-prod-001'
+param sku = 'StandardV2'
+param skuCount = 1
+param publisherEmail = 'admin@contoso.com'
+param publisherName = 'Contoso AI Gateway'
+param location = 'East US 2'
+param virtualNetworkType = 'None'
+param virtualNetworkConfiguration = {}
+param customProperties = {}
+param certificates = []
+param hostnameConfigurations = []
+
+param tags = {
+  Environment: 'Production'
+  Project: 'AI Gateway'
+  Owner: 'Platform Team'
+  CostCenter: 'IT'
+}
