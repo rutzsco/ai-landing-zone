@@ -13,6 +13,10 @@ param customProperties = {}
 param certificates = []
 param hostnameConfigurations = []
 
+// OpenAI backend endpoints
+param openAiPrimaryBackendUrl = 'https://contoso-openai-eastus.openai.azure.com'
+param openAiSecondaryBackendUrl = 'https://contoso-openai-centralus.openai.azure.com'
+
 param tags = {
   Environment: 'Production'
   Project: 'AI Gateway'

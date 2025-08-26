@@ -19,7 +19,7 @@ ai-gateway-apim/
 - **Azure Verified Modules Pattern**: Follows Microsoft's recommended patterns for Bicep modules
 - **Multi-Environment Support**: Separate parameter files for different environments
 - **Security**: System-assigned managed identity enabled by default
-- **Monitoring**: Diagnostic settings configured for logs and metrics
+- **Monitoring**: Optional; configure diagnostic settings separately if needed
 - **Flexible Configuration**: Support for virtual networks, custom domains, and certificates
 
 ## Prerequisites

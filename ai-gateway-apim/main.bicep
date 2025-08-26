@@ -47,6 +47,12 @@ param certificates array = []
 @description('Host name configurations for the API Management service')
 param hostnameConfigurations array = []
 
+@description('Primary OpenAI backend base URL (e.g., https://<resource>.openai.azure.com)')
+param openAiPrimaryBackendUrl string
+
+@description('Secondary OpenAI backend base URL (e.g., https://<resource>-secondary.openai.azure.com)')
+param openAiSecondaryBackendUrl string
+
 // API Management service (v2) using Azure Verified Module pattern
 resource apiManagement 'Microsoft.ApiManagement/service@2023-05-01-preview' = {
   name: apiManagementName
@@ -70,33 +76,28 @@ resource apiManagement 'Microsoft.ApiManagement/service@2023-05-01-preview' = {
   }
 }
 
-// Diagnostic settings for monitoring
-resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: '${apiManagementName}-diagnostics'
-  scope: apiManagement
+// APIM Backends for OpenAI
+resource backendPrimary 'Microsoft.ApiManagement/service/backends@2023-05-01-preview' = {
+  name: 'openai-primary'
+  parent: apiManagement
   properties: {
-    logs: [
-      {
-        categoryGroup: 'allLogs'
-        enabled: true
-        retentionPolicy: {
-          enabled: false
-          days: 0
-        }
-      }
-    ]
-    metrics: [
-      {
-        category: 'AllMetrics'
-        enabled: true
-        retentionPolicy: {
-          enabled: false
-          days: 0
-        }
-      }
-    ]
+    url: openAiPrimaryBackendUrl
+    protocol: 'http'
+    description: 'Primary OpenAI backend'
   }
 }
+
+resource backendSecondary 'Microsoft.ApiManagement/service/backends@2023-05-01-preview' = {
+  name: 'openai-secondary'
+  parent: apiManagement
+  properties: {
+    url: openAiSecondaryBackendUrl
+    protocol: 'http'
+    description: 'Secondary OpenAI backend'
+  }
+}
+
+// Diagnostic settings were intentionally omitted in this template. Configure separately if required.
 
 // Outputs
 @description('The resource ID of the API Management service')
