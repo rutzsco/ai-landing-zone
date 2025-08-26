@@ -88,24 +88,60 @@ resource apiManagement 'Microsoft.ApiManagement/service@2023-05-01-preview' = {
 }
 
 // APIM Backends for OpenAI
-resource backendPrimary 'Microsoft.ApiManagement/service/backends@2023-05-01-preview' = {
+resource backendPrimary 'Microsoft.ApiManagement/service/backends@2024-06-01-preview' = {
   name: 'openai-primary'
   parent: apiManagement
   properties: {
     url: openAiPrimaryBackendUrl
     protocol: 'http'
     description: 'Primary OpenAI backend'
+    // Configure API key at the backend level
+    credentials: {
+      header: {
+        'api-key': [ '{{openai-primary-api-key}}' ]
+      }
+    }
   }
 }
 
-resource backendSecondary 'Microsoft.ApiManagement/service/backends@2023-05-01-preview' = {
+resource backendSecondary 'Microsoft.ApiManagement/service/backends@2024-06-01-preview' = {
   name: 'openai-secondary'
   parent: apiManagement
   properties: {
     url: openAiSecondaryBackendUrl
     protocol: 'http'
     description: 'Secondary OpenAI backend'
+    // Configure API key at the backend level
+    credentials: {
+      header: {
+        'api-key': [ '{{openai-secondary-api-key}}' ]
+      }
+    }
   }
+}
+
+// Backend pool that load balances across primary and secondary
+resource backendPool 'Microsoft.ApiManagement/service/backends@2024-06-01-preview' = {
+  name: 'openai-pool'
+  parent: apiManagement
+  properties: any({
+    type: 'Pool'
+    pool: {
+      services: [
+        {
+          id: backendPrimary.id
+          weight: 50
+          priority: 1
+        }
+        {
+          id: backendSecondary.id
+          weight: 50
+          priority: 1
+        }
+      ]
+    }
+    description: 'Backend pool for Azure OpenAI (primary + secondary)'
+  })
 }
 
 // APIM Named Values for OpenAI API keys (stored as secrets)
@@ -144,11 +180,11 @@ resource openAiApi 'Microsoft.ApiManagement/service/apis@2023-05-01-preview' = {
     subscriptionRequired: false
   }
   dependsOn: [
-    backendPrimary
+  backendPool
   ]
 }
 
-// Policy with api-key header
+// Policy using backend pool; API key is configured on the backends
 resource openAiApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-01-preview' = {
   name: 'policy'
   parent: openAiApi
@@ -158,10 +194,7 @@ resource openAiApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-
 <policies>
   <inbound>
     <base />
-    <set-backend-service backend-id="openai-primary" />
-    <set-header name="api-key" exists-action="override">
-      <value>{{openai-primary-api-key}}</value>
-    </set-header>
+  <set-backend-service backend-id="openai-pool" />
   </inbound>
   <backend>
     <base />
