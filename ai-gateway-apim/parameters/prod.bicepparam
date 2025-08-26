@@ -17,6 +17,12 @@ param hostnameConfigurations = []
 param openAiPrimaryBackendUrl = 'https://contoso-openai-eastus.openai.azure.com'
 param openAiSecondaryBackendUrl = 'https://contoso-openai-centralus.openai.azure.com'
 
+// Secure API keys (supply securely via CLI/Env; empty by default)
+@secure()
+param openAiPrimaryApiKey = ''
+@secure()
+param openAiSecondaryApiKey = ''
+
 param tags = {
   Environment: 'Production'
   Project: 'AI Gateway'

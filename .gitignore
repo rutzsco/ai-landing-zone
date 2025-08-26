@@ -406,3 +406,4 @@ FodyWeavers.xsd
 *.sln.iml
 app-aca-basic/deployment-demo-local.ipynb
 app-aca-basic/parameters/local.bicepparam
+ai-gateway-apim/parameters/dev.bicepparam

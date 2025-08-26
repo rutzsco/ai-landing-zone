@@ -53,6 +53,17 @@ param openAiPrimaryBackendUrl string
 @description('Secondary OpenAI backend base URL (e.g., https://<resource>-secondary.openai.azure.com)')
 param openAiSecondaryBackendUrl string
 
+@description('OpenAPI specification URL for the Azure OpenAI API to import into APIM')
+param openAiOpenApiSpecUrl string = 'https://raw.githubusercontent.com/Azure-Samples/ai-hub-gateway-solution-accelerator/refs/heads/main/infra/modules/apim/openai-api/oai-api-spec-2024-10-21.yaml'
+
+@secure()
+@description('Primary OpenAI API key (stored securely as an APIM Named Value)')
+param openAiPrimaryApiKey string
+
+@secure()
+@description('Secondary OpenAI API key (stored securely as an APIM Named Value)')
+param openAiSecondaryApiKey string
+
 // API Management service (v2) using Azure Verified Module pattern
 resource apiManagement 'Microsoft.ApiManagement/service@2023-05-01-preview' = {
   name: apiManagementName
@@ -97,6 +108,75 @@ resource backendSecondary 'Microsoft.ApiManagement/service/backends@2023-05-01-p
   }
 }
 
+// APIM Named Values for OpenAI API keys (stored as secrets)
+resource namedValueOpenAiPrimary 'Microsoft.ApiManagement/service/namedValues@2023-05-01-preview' = {
+  name: 'openai-primary-api-key'
+  parent: apiManagement
+  properties: {
+    displayName: 'openai-primary-api-key'
+    value: openAiPrimaryApiKey
+    secret: true
+    tags: [ 'openai', 'secret', 'primary' ]
+  }
+}
+
+resource namedValueOpenAiSecondary 'Microsoft.ApiManagement/service/namedValues@2023-05-01-preview' = {
+  name: 'openai-secondary-api-key'
+  parent: apiManagement
+  properties: {
+    displayName: 'openai-secondary-api-key'
+    value: openAiSecondaryApiKey
+    secret: true
+    tags: [ 'openai', 'secret', 'secondary' ]
+  }
+}
+
+// Azure OpenAI API (imported from OpenAPI spec)
+resource openAiApi 'Microsoft.ApiManagement/service/apis@2023-05-01-preview' = {
+  name: 'openai-2024-10-21'
+  parent: apiManagement
+  properties: {
+    format: 'openapi-link'
+    value: openAiOpenApiSpecUrl
+    displayName: 'Azure OpenAI'
+    path: 'openai'
+    protocols: [ 'https' ]
+    subscriptionRequired: false
+  }
+  dependsOn: [
+    backendPrimary
+  ]
+}
+
+// Policy with api-key header
+resource openAiApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-01-preview' = {
+  name: 'policy'
+  parent: openAiApi
+  properties: {
+    format: 'rawxml'
+    value: '''<?xml version="1.0" encoding="utf-8"?>
+<policies>
+  <inbound>
+    <base />
+    <set-backend-service backend-id="openai-primary" />
+    <set-header name="api-key" exists-action="override">
+      <value>{{openai-primary-api-key}}</value>
+    </set-header>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>'''
+  }
+  dependsOn: [ namedValueOpenAiPrimary ]
+}
+
 // Diagnostic settings were intentionally omitted in this template. Configure separately if required.
 
 // Outputs
@@ -107,19 +187,19 @@ output apiManagementResourceId string = apiManagement.id
 output apiManagementName string = apiManagement.name
 
 @description('The gateway URL of the API Management service')
-output gatewayUrl string = apiManagement.properties.gatewayUrl
+output gatewayUrl string = apiManagement.properties.gatewayUrl ?? ''
 
 @description('The developer portal URL of the API Management service')
-output developerPortalUrl string = apiManagement.properties.developerPortalUrl
+output developerPortalUrl string = apiManagement.properties.developerPortalUrl ?? ''
 
 @description('The management API URL of the API Management service')
-output managementApiUrl string = apiManagement.properties.managementApiUrl
+output managementApiUrl string = apiManagement.properties.managementApiUrl ?? ''
 
 @description('The system assigned identity principal ID')
 output systemAssignedIdentityPrincipalId string = apiManagement.identity.principalId
 
 @description('The public IP addresses of the API Management service')
-output publicIPAddresses array = apiManagement.properties.publicIPAddresses
+output publicIPAddresses array = apiManagement.properties.publicIPAddresses ?? []
 
 @description('The private IP addresses of the API Management service')
-output privateIPAddresses array = apiManagement.properties.privateIPAddresses
+output privateIPAddresses array = apiManagement.properties.privateIPAddresses ?? []
