@@ -130,13 +130,13 @@ resource backendPool 'Microsoft.ApiManagement/service/backends@2024-06-01-previe
       services: [
         {
           id: backendPrimary.id
-          weight: 50
+          weight: 100
           priority: 1
         }
         {
           id: backendSecondary.id
-          weight: 50
-          priority: 1
+          weight: 100
+          priority: 2
         }
       ]
     }
